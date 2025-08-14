@@ -3,79 +3,127 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 
-# Título de la aplicación
-st.title('Análisis Exploratorio de Datos con Streamlit')
-st.write('---')
-
-# --- Generación de datos de ejemplo ---
-@st.cache_data
-def generate_data():
-    """
-    Genera un DataFrame de pandas con datos ficticios para el análisis.
-    Los datos representan ventas mensuales de diferentes productos.
-    """
-    # Crear un DataFrame con datos de ventas ficticios
-    data = {
-        'Mes': pd.to_datetime(['2023-01', '2023-02', '2023-03', '2023-04', '2023-05',
-                               '2023-06', '2023-07', '2023-08', '2023-09', '2023-10',
-                               '2023-11', '2023-12', '2024-01', '2024-02', '2024-03']),
-        'Producto': ['A', 'B', 'C', 'A', 'B', 'C', 'A', 'B', 'C', 'A', 'B', 'C', 'A', 'B', 'C'],
-        'Ventas': np.random.randint(100, 500, size=15)
-    }
-    df = pd.DataFrame(data)
-    return df
-
-df = generate_data()
-
-st.header('1. Vista Previa de los Datos')
-st.write('Aquí puedes ver las primeras filas de los datos que estamos analizando.')
-st.dataframe(df)
-st.write('---')
-
-# --- Análisis Exploratorio de Datos (EDA) ---
-st.header('2. Análisis de Datos')
-
-# Mostrar estadísticas descriptivas
-st.subheader('Estadísticas Descriptivas')
-st.write(df.describe())
-st.write('---')
-
-# --- Visualizaciones ---
-
-st.header('3. Visualizaciones')
-st.write('A continuación se muestran dos gráficos para visualizar los datos.')
-
-# Gráfico de Barras: Ventas totales por producto
-st.subheader('Ventas Totales por Producto')
-df_ventas_por_producto = df.groupby('Producto')['Ventas'].sum().reset_index()
-fig_barras = px.bar(df_ventas_por_producto, x='Producto', y='Ventas', 
-                    title='Ventas Totales por Producto')
-st.plotly_chart(fig_barras)
-st.write('Este gráfico de barras muestra la suma total de las ventas para cada producto.')
-st.write('---')
-
-# Gráfico de Líneas: Evolución de las ventas a lo largo del tiempo
-st.subheader('Evolución de las Ventas a lo largo del tiempo')
-# Asegurarse de que el eje x sea temporal para el gráfico de líneas
-df_ventas_linea = df.sort_values('Mes')
-fig_lineas = px.line(df_ventas_linea, x='Mes', y='Ventas', color='Producto',
-                     title='Ventas Mensuales por Producto')
-st.plotly_chart(fig_lineas)
-st.write('Este gráfico de líneas muestra la evolución de las ventas de cada producto a lo largo del tiempo.')
-st.write('---')
-
-# --- Interacción con el usuario (ejemplo) ---
-st.header('4. Interactúa con los datos')
-st.write('Puedes filtrar los datos por producto para ver solo la información relevante.')
-
-# Selector de producto en la barra lateral
-producto_seleccionado = st.sidebar.selectbox(
-    'Selecciona un producto:',
-    df['Producto'].unique()
+# --- Configuración de la página de Streamlit ---
+# Se personaliza la apariencia de la página.
+st.set_page_config(
+    page_title="Análisis de Datos de Automóviles",
+    page_icon="🚗",
+    layout="wide",
 )
 
-# Filtrar el DataFrame según la selección del usuario
-df_filtrado = df[df['Producto'] == producto_seleccionado]
+# --- Título y descripción de la aplicación ---
+st.title('Análisis Interactivo de Datos de Automóviles 🚗')
+st.markdown("""
+Esta aplicación permite explorar un conjunto de datos ficticio de automóviles.
+Puedes filtrar los datos y visualizar diferentes métricas de forma interactiva.
+""")
+st.write('---')
 
-st.subheader(f'Datos para el Producto {producto_seleccionado}')
+# --- Generación de datos ficticios ---
+@st.cache_data
+def generate_car_data(num_rows=1000):
+    """
+    Genera un DataFrame de pandas con 1000 filas y 8 columnas de datos de automóviles.
+    """
+    marcas = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'Volkswagen', 'BMW', 'Mercedes-Benz']
+    colores = ['Blanco', 'Negro', 'Gris', 'Rojo', 'Azul', 'Plata']
+    combustibles = ['Gasolina', 'Diésel', 'Eléctrico']
+    
+    data = {
+        'Marca': np.random.choice(marcas, num_rows),
+        'Modelo': [f'Modelo_{i}' for i in range(num_rows)],
+        'Año': np.random.randint(2015, 2024, num_rows),
+        'Potencia_HP': np.random.randint(100, 500, num_rows),
+        'Consumo_L_100km': np.round(np.random.uniform(5.0, 15.0, num_rows), 2),
+        'Precio': np.round(np.random.uniform(20000, 150000, num_rows), 2),
+        'Color': np.random.choice(colores, num_rows),
+        'Tipo_Combustible': np.random.choice(combustibles, num_rows)
+    }
+    
+    return pd.DataFrame(data)
+
+df = generate_car_data()
+
+# --- Barra lateral para filtros interactivos ---
+st.sidebar.header('Opciones de Filtro')
+
+# Filtro por marca
+marcas_seleccionadas = st.sidebar.multiselect(
+    'Selecciona una o más marcas',
+    options=df['Marca'].unique(),
+    default=df['Marca'].unique()
+)
+
+# Filtro por año
+año_min, año_max = st.sidebar.slider(
+    'Selecciona un rango de años',
+    min_value=int(df['Año'].min()),
+    max_value=int(df['Año'].max()),
+    value=(int(df['Año'].min()), int(df['Año'].max()))
+)
+
+# Filtro por tipo de combustible
+combustible_seleccionado = st.sidebar.multiselect(
+    'Selecciona el tipo de combustible',
+    options=df['Tipo_Combustible'].unique(),
+    default=df['Tipo_Combustible'].unique()
+)
+
+# Aplicar los filtros al DataFrame
+df_filtrado = df[
+    (df['Marca'].isin(marcas_seleccionadas)) &
+    (df['Año'] >= año_min) & (df['Año'] <= año_max) &
+    (df['Tipo_Combustible'].isin(combustible_seleccionado))
+]
+
+# --- Visualización de los datos filtrados ---
+st.subheader('Datos Filtrados')
 st.dataframe(df_filtrado)
+st.write(f"Mostrando {df_filtrado.shape[0]} de {df.shape[0]} filas.")
+st.write('---')
+
+# --- Generación de gráficos interactivos ---
+st.header('Gráficos Interactivos')
+
+# Gráfico de Barras: Precio promedio por marca
+st.subheader('Precio Promedio por Marca')
+df_precio_marca = df_filtrado.groupby('Marca')['Precio'].mean().reset_index()
+fig_bar = px.bar(
+    df_precio_marca, 
+    x='Marca', 
+    y='Precio',
+    title='Precio Promedio de Automóviles por Marca',
+    labels={'Precio': 'Precio Promedio ($)', 'Marca': 'Marca del Automóvil'},
+    color='Marca'
+)
+st.plotly_chart(fig_bar, use_container_width=True)
+st.write("Este gráfico muestra el precio promedio de los automóviles para cada marca seleccionada.")
+st.write('---')
+
+# Gráfico de Líneas: Evolución del precio promedio por año
+st.subheader('Evolución del Precio Promedio por Año')
+df_precio_año = df_filtrado.groupby('Año')['Precio'].mean().reset_index()
+fig_line = px.line(
+    df_precio_año,
+    x='Año',
+    y='Precio',
+    title='Evolución del Precio Promedio a lo largo de los Años',
+    labels={'Precio': 'Precio Promedio ($)', 'Año': 'Año del Modelo'},
+)
+st.plotly_chart(fig_line, use_container_width=True)
+st.write("Este gráfico de líneas ilustra cómo ha cambiado el precio promedio a lo largo de los años.")
+st.write('---')
+
+# Gráfico de Dispersión: Potencia vs. Consumo
+st.subheader('Potencia vs. Consumo de Combustible')
+fig_scatter = px.scatter(
+    df_filtrado, 
+    x='Potencia_HP', 
+    y='Consumo_L_100km', 
+    color='Tipo_Combustible', 
+    hover_data=['Marca', 'Año', 'Precio'],
+    title='Relación entre Potencia y Consumo',
+    labels={'Potencia_HP': 'Potencia (HP)', 'Consumo_L_100km': 'Consumo (L/100km)'}
+)
+st.plotly_chart(fig_scatter, use_container_width=True)
+st.write("Este gráfico de dispersión muestra la relación entre la potencia y el consumo de combustible de los autos. Puedes ver los detalles al pasar el cursor sobre los puntos.")
